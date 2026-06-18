@@ -2,7 +2,7 @@
 
 # 1. Définition des variables
 APP_NAME="MonFramework"
-SRC_DIR="src/java"
+SRC_DIR="com/monframework/com"
 BUILD_DIR="build"
 LIB_DIR="lib"
 SERVLET_API_JAR="$LIB_DIR/servlet-api.jar"

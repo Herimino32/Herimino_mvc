@@ -1,0 +1,59 @@
+package com.monframework.com.utils;
+
+import java.io.File;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.monframework.com.annotation.Controller;
+
+public class ControllerUtils {
+
+    private static List<Class<?>> findClasses(String packageName) {
+        List<Class<?>> classes = new ArrayList<>();
+
+        String path = packageName.replace(".", "/");
+
+        try {
+            ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+            URL resource = classLoader.getResource(path);
+
+            if (resource == null) {
+                return classes;
+            }
+
+            File directory = new File(resource.toURI());
+
+            if (directory.exists() && directory.isDirectory()) {
+                for (File file : directory.listFiles()) {
+
+                    if (file.getName().endsWith(".class")) {
+                        String className =
+                                packageName + "."
+                                + file.getName().substring(0, file.getName().length() - 6);
+
+                        classes.add(Class.forName(className));
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                "Erreur lors du scan : " + packageName,
+                e
+            );
+        }
+
+        return classes;
+    }
+    public static  List<Class<?>> getController(String packageName){
+        List<Class<?>> classes = findClasses(packageName);
+        List<Class<?>> controllerNames = new ArrayList<>();
+        for(Class<?> clazz : classes){
+            if(clazz.isAnnotationPresent(Controller.class)){
+                    controllerNames.add(clazz);
+            }
+        }
+    return controllerNames;
+    }
+ }
