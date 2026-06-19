@@ -15,7 +15,7 @@ public class ControllerUtils {
         String path = packageName.replace(".", "/");
 
         try {
-            ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+            ClassLoader classLoader = ControllerUtils.class.getClassLoader();
             URL resource = classLoader.getResource(path);
 
             if (resource == null) {
