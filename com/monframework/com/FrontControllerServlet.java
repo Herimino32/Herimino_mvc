@@ -9,18 +9,19 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import com.monframework.com.utils.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class FrontControllerServlet extends HttpServlet {
 
-    List<Class<?>> listeControllers = new ArrayList<>();
+    HashMap<String, Mapping> mappingUrls = new HashMap<>();
 
     @Override
     public void init() throws ServletException {
         try {
             String controllerPackage = getServletConfig().getInitParameter("controller");
             if (controllerPackage != null) {
-                listeControllers = ControllerUtils.getController(controllerPackage);
+                mappingUrls = ControllerUtils.getAnnotedMethods(controllerPackage);
             }
         } catch (Exception e) {
             throw new ServletException("Erreur lors de l'initialisation", e);
@@ -34,21 +35,27 @@ public class FrontControllerServlet extends HttpServlet {
         if (path == null || path.isEmpty()) {
             path = request.getServletPath();
         }
-
+        if (path.startsWith("/")) {
+        path = path.substring(1);
+        }
+        
         response.setContentType("text/plain;charset=UTF-8");
         PrintWriter out = response.getWriter();
-        
-        out.println("Route interceptee par framework : " + path);
-        out.println("--- Liste des contrôleurs scannés ---");
-        
-        if (listeControllers.isEmpty()) {
-            out.println("Aucun contrôleur trouvé.");
-        } else {
-            for (Class<?> clazz : listeControllers) {
-                out.println(" -> " + clazz.getName());
-            }
-        }
+
+        Mapping mapping = mappingUrls.get(path);
+
+        if (mapping != null) {
+        out.println("==================================================");
+        out.println("   ROUTE INTERCEPTÉE AVEC SUCCÈS ");
+        out.println("==================================================");
+        out.println("Classe cible  : " + mapping.getClassName());
+        out.println("Méthode cible : " + mapping.getMethod());
+    } else {
+        throw new ServletException("Erreur : L'URL '" + path + "' n'est pas supportée par le framework. "
+                + "Routes valides : " + mappingUrls.keySet());
     }
+}
+
 
     private boolean isStaticResource(String uri) {
         return uri.endsWith(".html") || uri.endsWith(".css") || uri.endsWith(".js")

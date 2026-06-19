@@ -3,9 +3,12 @@ package com.monframework.com.utils;
 import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.lang.reflect.Method;
 
 import com.monframework.com.annotation.Controller;
+import com.monframework.com.annotation.MethodAnnotation;
 
 public class ControllerUtils {
 
@@ -55,5 +58,20 @@ public class ControllerUtils {
             }
         }
     return controllerNames;
+    }
+    public static HashMap<String,Mapping> getAnnotedMethods(String packageName){
+        HashMap<String, Mapping> registry = new HashMap<>();
+        List<Class<?>> classes = findClasses(packageName);
+        for(Class<?> clazz : classes){
+            for(Method method : clazz.getDeclaredMethods()){
+                if(method.isAnnotationPresent(MethodAnnotation.class)){
+                    MethodAnnotation annotation = method.getAnnotation(MethodAnnotation.class);
+                    String url = annotation.url();
+                    Mapping mapping = new Mapping(clazz.getName(),method.getName());
+                    registry.put(url,mapping);
+                }
+            }
+        }
+    return registry;
     }
  }
