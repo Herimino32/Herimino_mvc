@@ -1,6 +1,7 @@
 package com.monframework.com;
 
 import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,18 +13,9 @@ import java.util.HashMap;
 
 public class FrontControllerServlet extends HttpServlet {
 
-    HashMap<UrlMethod, Mapping> mappingUrls = new HashMap<>();
-
     @Override
     public void init() throws ServletException {
-        try {
-            String controllerPackage = getServletConfig().getInitParameter("controller");
-            if (controllerPackage != null) {
-                mappingUrls = ControllerUtils.getAnnotedMethods(controllerPackage);
-            }
-        } catch (Exception e) {
-            throw new ServletException("Erreur lors de l'initialisation", e);
-        }
+        System.out.println("[INFO] FrontControllerServlet initialisée.");
     }
 
     public void processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -43,11 +35,18 @@ public class FrontControllerServlet extends HttpServlet {
         String clientMethod = request.getMethod();
         UrlMethod keyRecherche = new UrlMethod(path, clientMethod);
 
-        Mapping mapping = mappingUrls.get(keyRecherche);
+        ServletContext context = getServletContext();
+        HashMap<UrlMethod, Mapping> registry = (HashMap<UrlMethod, Mapping>) context.getAttribute("urlRegistry");
+
+        if (registry == null) {
+            throw new ServletException("Erreur : Le dictionnaire de routes n'a pas été trouvé dans le contexte !");
+        }
+
+        Mapping mapping = registry.get(keyRecherche);
 
         if (mapping != null) {
             out.println("==================================================");
-            out.println("   ROUTE INTERCEPTÉE AVEC SUCCÈS (Sprint 3) ");
+            out.println("   ROUTE INTERCEPTÉE AVEC SUCCÈS (Sprint 4) ");
             out.println("==================================================");
             out.println("URL demandée   : /" + path);
             out.println("Méthode HTTP   : " + clientMethod);
@@ -60,9 +59,9 @@ public class FrontControllerServlet extends HttpServlet {
                 throw new ServletException("Erreur lors de l'invocation de la méthode", e);
             }
         } else {
-            throw new ServletException("DÉBOGAGE SPRINT 3 -> "
+            throw new ServletException("DÉBOGAGE SPRINT 4 -> "
                     + "Clé recherchée : [Methode=" + clientMethod + ", Path='" + path + "'] | "
-                    + "Routes valides enregistrées dans la Map : " + mappingUrls.keySet());
+                    + "Routes valides enregistrées dans la Map : " + registry.keySet());
         }
     }
 
