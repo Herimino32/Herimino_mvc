@@ -21,7 +21,7 @@ public class AppLoadListener implements ServletContextListener {
         ServletContext context = sce.getServletContext();
         context.setAttribute("urlRegistry", registry);
 
-        System.out.println("[SUCCESS] Scan terminé. Nombre de routes chargées : " + registry.size());
+        System.out.println("[SUCCESS] scan terminé. Nombre de routes chargées : " + registry.size());
     }
 
     @Override
