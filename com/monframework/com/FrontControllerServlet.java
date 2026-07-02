@@ -8,13 +8,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import com.monframework.com.utils.*;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 public class FrontControllerServlet extends HttpServlet {
 
-    HashMap<String, Mapping> mappingUrls = new HashMap<>();
+    HashMap<UrlMethod, Mapping> mappingUrls = new HashMap<>();
 
     @Override
     public void init() throws ServletException {
@@ -36,26 +34,37 @@ public class FrontControllerServlet extends HttpServlet {
             path = request.getServletPath();
         }
         if (path.startsWith("/")) {
-        path = path.substring(1);
+            path = path.substring(1);
         }
-        
+
         response.setContentType("text/plain;charset=UTF-8");
         PrintWriter out = response.getWriter();
 
-        Mapping mapping = mappingUrls.get(path);
+        String clientMethod = request.getMethod();
+        UrlMethod keyRecherche = new UrlMethod(path, clientMethod);
+
+        Mapping mapping = mappingUrls.get(keyRecherche);
 
         if (mapping != null) {
-        out.println("==================================================");
-        out.println("   ROUTE INTERCEPTÉE AVEC SUCCÈS ");
-        out.println("==================================================");
-        out.println("Classe cible  : " + mapping.getClassName());
-        out.println("Méthode cible : " + mapping.getMethod());
-    } else {
-        throw new ServletException("Erreur : L'URL '" + path + "' n'est pas supportée par le framework. "
-                + "Routes valides : " + mappingUrls.keySet());
+            out.println("==================================================");
+            out.println("   ROUTE INTERCEPTÉE AVEC SUCCÈS (Sprint 3) ");
+            out.println("==================================================");
+            out.println("URL demandée   : /" + path);
+            out.println("Méthode HTTP   : " + clientMethod);
+            out.println("Classe cible   : " + mapping.getClassName());
+            out.println("Méthode cible  : " + mapping.getMethod());
+            try {
+                Object result = mapping.invoke();
+                out.println("Methode exuted: " + result);
+            } catch (Exception e) {
+                throw new ServletException("Erreur lors de l'invocation de la méthode", e);
+            }
+        } else {
+            throw new ServletException("DÉBOGAGE SPRINT 3 -> "
+                    + "Clé recherchée : [Methode=" + clientMethod + ", Path='" + path + "'] | "
+                    + "Routes valides enregistrées dans la Map : " + mappingUrls.keySet());
+        }
     }
-}
-
 
     private boolean isStaticResource(String uri) {
         return uri.endsWith(".html") || uri.endsWith(".css") || uri.endsWith(".js")

@@ -5,4 +5,5 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MethodAnnotation {
     String url();
+    String method() default "GET";
 }
