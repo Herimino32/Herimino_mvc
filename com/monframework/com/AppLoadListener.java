@@ -13,15 +13,23 @@ public class AppLoadListener implements ServletContextListener {
     @Override
     public void contextInitialized(ServletContextEvent sce) {
         System.out.println("[INFO] Tomcat démarre : Initialisation du dictionnaire de routes...");
-    
+        
+        ServletContext context = sce.getServletContext();
+
+        String packageToScan = context.getInitParameter("scan-package");
+
+        if(packageToScan == null || packageToScan.trim().isEmpty()){
+            System.err.println("[ERREUR] Aucun package à scanner n'a été spécifié dans le web.xml ! (paramètre 'scan-package')");
+            return;
+        }
+
         HashMap<UrlMethod, Mapping> registry = new HashMap<>();
 
-        ControllerUtils.getAnnotedMethods("mg.itu.controller", registry);
+        ControllerUtils.getAnnotedMethods(packageToScan, registry);
 
-        ServletContext context = sce.getServletContext();
         context.setAttribute("urlRegistry", registry);
 
-        System.out.println("[SUCCESS] scan terminé. Nombre de routes chargées : " + registry.size());
+        System.out.println("[SUCCESS] scan du '" + packageToScan +  "' Nombre de routes chargées : " + registry.size());
     }
 
     @Override

@@ -13,9 +13,14 @@ import java.util.HashMap;
 
 public class FrontControllerServlet extends HttpServlet {
 
-    @Override
-    public void init() throws ServletException {
-        System.out.println("[INFO] FrontControllerServlet initialisée.");
+    HashMap<UrlMethod, Mapping> registry;
+
+    public void init() throws ServletException {        
+        this.registry=(HashMap<UrlMethod, Mapping>)this.getServletContext().getAttribute("urlRegistry");
+        if (this.registry == null) {
+            throw new ServletException("[ERREUR] Le dictionnaire 'urlRegistry' n'a pas été trouvé dans le ServletContext !");
+        }
+        System.out.println("[INFO] FrontControllerServlet liée avec succès au dictionnaire de routes.");
     }
 
     public void processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -35,14 +40,7 @@ public class FrontControllerServlet extends HttpServlet {
         String clientMethod = request.getMethod();
         UrlMethod keyRecherche = new UrlMethod(path, clientMethod);
 
-        ServletContext context = getServletContext();
-        HashMap<UrlMethod, Mapping> registry = (HashMap<UrlMethod, Mapping>) context.getAttribute("urlRegistry");
-
-        if (registry == null) {
-            throw new ServletException("Erreur : Le dictionnaire de routes n'a pas été trouvé dans le contexte !");
-        }
-
-        Mapping mapping = registry.get(keyRecherche);
+        Mapping mapping = this.registry.get(keyRecherche);
 
         if (mapping != null) {
             out.println("==================================================");
