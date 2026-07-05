@@ -7,7 +7,6 @@ import jakarta.servlet.annotation.WebListener;
 import com.monframework.com.utils.*;
 import java.util.HashMap;
 
-@WebListener
 public class AppLoadListener implements ServletContextListener {
 
     @Override
@@ -25,7 +24,14 @@ public class AppLoadListener implements ServletContextListener {
 
         HashMap<UrlMethod, Mapping> registry = new HashMap<>();
 
-        ControllerUtils.getAnnotedMethods(packageToScan, registry);
+        try{
+            ControllerUtils.getAnnotedMethods(packageToScan, registry);
+            System.out.println("[SUCCESS] scan du '" + packageToScan + "' Nombre de routes chargées : " + registry.size());
+        }catch(RuntimeException e){
+            System.err.println("[ERREUR CRITIQUE] Échec du scan des contrôleurs : " + e.getMessage());
+            throw e;
+        }
+        
 
         context.setAttribute("urlRegistry", registry);
 

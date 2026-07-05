@@ -59,8 +59,6 @@ public class ControllerUtils {
         return controllerNames;
     }
 
-    HashMap<UrlMethod, Mapping> registry = new HashMap<>();
-
     public static void getAnnotedMethods(String packageName,HashMap<UrlMethod, Mapping> registry){
         List<Class<?>> classes = findClasses(packageName);
         for(Class<?> clazz : classes){
