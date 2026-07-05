@@ -59,25 +59,23 @@ public class ControllerUtils {
         return controllerNames;
     }
 
-    public static HashMap<UrlMethod, Mapping> getAnnotedMethods(String packageName) {
-        HashMap<UrlMethod, Mapping> registry = new HashMap<>();
+    public static void getAnnotedMethods(String packageName,HashMap<UrlMethod, Mapping> registry){
         List<Class<?>> classes = findClasses(packageName);
-        for (Class<?> clazz : classes) {
-            for (Method method : clazz.getDeclaredMethods()) {
-                if (method.isAnnotationPresent(MethodAnnotation.class)) {
+        for(Class<?> clazz : classes){
+            for(Method method : clazz.getDeclaredMethods()){
+                if(method.isAnnotationPresent(MethodAnnotation.class)){
                     MethodAnnotation annotation = method.getAnnotation(MethodAnnotation.class);
                     String url = annotation.url();
                     String methodHttp = annotation.method();
                     UrlMethod key = new UrlMethod(url, methodHttp);
-                    Mapping value = new Mapping(clazz.getName(), method.getName());
-                    if (registry.containsKey(key)) {
-                        throw new RuntimeException("Erreur : La route [" + methodHttp.toUpperCase() + " /" + url
+                    Mapping value = new Mapping(clazz.getName(),method.getName());
+                    if (registry.containsKey(key)){
+                         throw new RuntimeException("Erreur : La route [" + methodHttp.toUpperCase() + " /" + url
                                 + "] est déjà enregistrée par une autre méthode ! Conflit détecté au démarrage.");
                     }
-                    registry.put(key, value);
+                    registry.put(key,value);
                 }
             }
         }
-        return registry;
     }
 }
