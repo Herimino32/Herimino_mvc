@@ -15,10 +15,11 @@ public class FrontControllerServlet extends HttpServlet {
 
     HashMap<UrlMethod, Mapping> registry;
 
-    public void init() throws ServletException {        
-        this.registry=(HashMap<UrlMethod, Mapping>)this.getServletContext().getAttribute("urlRegistry");
+    public void init() throws ServletException {
+        this.registry = (HashMap<UrlMethod, Mapping>) this.getServletContext().getAttribute("urlRegistry");
         if (this.registry == null) {
-            throw new ServletException("[ERREUR] Le dictionnaire 'urlRegistry' n'a pas été trouvé dans le ServletContext !");
+            throw new ServletException(
+                    "[ERREUR] Le dictionnaire 'urlRegistry' n'a pas été trouvé dans le ServletContext !");
         }
         System.out.println("[INFO] FrontControllerServlet liée avec succès au dictionnaire de routes.");
     }
@@ -52,13 +53,29 @@ public class FrontControllerServlet extends HttpServlet {
             out.println("Méthode cible  : " + mapping.getMethod());
             try {
                 Object result = mapping.invoke();
-                out.println("Methode exuted: " + result);
+                if (result != null && result instanceof ModelView) {
+                    ModelView mv = (ModelView) result;
+                    String prefixe = "/WEB-INF/views/";
+                    String suffixe = ".jsp";
+                    String viewPath = prefixe + mv.getView() + suffixe;
+
+                    HashMap<String, Object> modelData = mv.getData();
+                    for (java.util.Map.Entry<String, Object> entry : modelData.entrySet()) {
+                        String cle = entry.getKey();
+                        Object valeur = entry.getValue();
+                        request.setAttribute(cle, valeur);
+                    }
+                    RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath);
+                    dispatcher.forward(request, response);
+
+                    return;
+
+                }
             } catch (Exception e) {
                 throw new ServletException("Erreur lors de l'invocation de la méthode", e);
             }
         } else {
-            throw new ServletException("DÉBOGAGE SPRINT 4 -> "
-                    + "Clé recherchée : [Methode=" + clientMethod + ", Path='" + path + "'] | "
+            throw new ServletException("Clé recherchée : [Methode=" + clientMethod + ", Path='" + path + "'] | "
                     + "Routes valides enregistrées dans la Map : " + registry.keySet());
         }
     }
@@ -66,7 +83,7 @@ public class FrontControllerServlet extends HttpServlet {
     private boolean isStaticResource(String uri) {
         return uri.endsWith(".html") || uri.endsWith(".css") || uri.endsWith(".js")
                 || uri.endsWith(".png") || uri.endsWith(".jpg") || uri.endsWith(".gif")
-                || uri.endsWith(".ico") || uri.endsWith(".svg") || uri.endsWith(".jsp");
+                || uri.endsWith(".ico") || uri.endsWith(".svg");
     }
 
     @Override
