@@ -9,6 +9,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import com.monframework.com.utils.*;
+import com.monframework.com.annotation.Restapi;
+
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.HashMap;
 
 public class FrontControllerServlet extends HttpServlet {
@@ -35,25 +39,70 @@ public class FrontControllerServlet extends HttpServlet {
             path = path.substring(1);
         }
 
-        response.setContentType("text/plain;charset=UTF-8");
-        PrintWriter out = response.getWriter();
-
         String clientMethod = request.getMethod();
         UrlMethod keyRecherche = new UrlMethod(path, clientMethod);
 
         Mapping mapping = this.registry.get(keyRecherche);
 
         if (mapping != null) {
-            out.println("==================================================");
-            out.println("   ROUTE INTERCEPTÉE AVEC SUCCÈS (Sprint 4) ");
-            out.println("==================================================");
-            out.println("URL demandée   : /" + path);
-            out.println("Méthode HTTP   : " + clientMethod);
-            out.println("Classe cible   : " + mapping.getClassName());
-            out.println("Méthode cible  : " + mapping.getMethod());
             try {
-                Object result = mapping.invoke();
-                if (result != null && result instanceof ModelView) {
+                //  Récupération de la classe cible
+                Class<?> clazz = Class.forName(mapping.getClassName());
+
+                //  Recherche de la méthode cible par son nom 
+                Method targetMethod = null;
+                for (Method m : clazz.getDeclaredMethods()) {
+                    if (m.getName().equals(mapping.getMethod())) {
+                        targetMethod = m;
+                        break;
+                    }
+                }
+
+                if (targetMethod == null) {
+                    throw new NoSuchMethodException("Méthode " + mapping.getMethod() + " introuvable dans " + mapping.getClassName());
+                }
+
+                // Extraction dynamique des paramètres depuis la requête HTTP 
+                Parameter[] parameters = targetMethod.getParameters();
+                Object[] args = new Object[parameters.length];
+
+                for (int i = 0; i < parameters.length; i++) {
+                    String paramName = parameters[i].getName();
+                    String paramValue = request.getParameter(paramName);
+                    args[i] = paramValue;
+                }
+
+                // Instanciation du contrôleur et invocation avec les arguments 
+                Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
+                Object result = targetMethod.invoke(controllerInstance, args);
+
+                //  Vérification de la présence de l'annotation @Restapi 
+                boolean isRestApi = targetMethod.isAnnotationPresent(Restapi.class);
+
+                // renvoi json
+                if (isRestApi) {
+                    response.setContentType("application/json;charset=UTF-8");
+                    PrintWriter out = response.getWriter();
+
+                    Object dataToSerialize = result;
+
+                    // Si la méthode REST renvoie un ModelView, on extrait uniquement ses données
+                    if (result instanceof ModelView) {
+                        ModelView mv = (ModelView) result;
+                        dataToSerialize = mv.getData();
+                    }
+
+                    // Conversion de l'objet en chaîne JSON
+                    String jsonResponse = JsonUtils.toJson(dataToSerialize);
+
+                    out.print(jsonResponse);
+                    out.flush();
+                    return; // Fin du traitement !
+                } 
+                
+                // Traitement classique avec vue JSP
+                else if (result != null && result instanceof ModelView) {
+                    response.setContentType("text/html;charset=UTF-8");
                     ModelView mv = (ModelView) result;
                     String prefixe = "/WEB-INF/views/";
                     String suffixe = ".jsp";
@@ -69,7 +118,6 @@ public class FrontControllerServlet extends HttpServlet {
                     dispatcher.forward(request, response);
 
                     return;
-
                 }
             } catch (Exception e) {
                 throw new ServletException("Erreur lors de l'invocation de la méthode", e);
