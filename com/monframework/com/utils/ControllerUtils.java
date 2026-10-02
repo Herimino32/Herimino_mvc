@@ -31,8 +31,7 @@ public class ControllerUtils {
                 for (File file : directory.listFiles()) {
 
                     if (file.getName().endsWith(".class")) {
-                        String className =
-                                packageName + "."
+                        String className = packageName + "."
                                 + file.getName().substring(0, file.getName().length() - 6);
 
                         classes.add(Class.forName(className));
@@ -42,36 +41,41 @@ public class ControllerUtils {
 
         } catch (Exception e) {
             throw new RuntimeException(
-                "Erreur lors du scan : " + packageName,
-                e
-            );
+                    "Erreur lors du scan : " + packageName,
+                    e);
         }
 
         return classes;
     }
-    public static  List<Class<?>> getController(String packageName){
+
+    public static List<Class<?>> getController(String packageName) {
         List<Class<?>> classes = findClasses(packageName);
         List<Class<?>> controllerNames = new ArrayList<>();
-        for(Class<?> clazz : classes){
-            if(clazz.isAnnotationPresent(Controller.class)){
-                    controllerNames.add(clazz);
+        for (Class<?> clazz : classes) {
+            if (clazz.isAnnotationPresent(Controller.class)) {
+                controllerNames.add(clazz);
             }
         }
-    return controllerNames;
+        return controllerNames;
     }
-    public static HashMap<String,Mapping> getAnnotedMethods(String packageName){
-        HashMap<String, Mapping> registry = new HashMap<>();
+
+    public static void getAnnotedMethods(String packageName,HashMap<UrlMethod, Mapping> registry){
         List<Class<?>> classes = findClasses(packageName);
         for(Class<?> clazz : classes){
             for(Method method : clazz.getDeclaredMethods()){
                 if(method.isAnnotationPresent(MethodAnnotation.class)){
                     MethodAnnotation annotation = method.getAnnotation(MethodAnnotation.class);
                     String url = annotation.url();
-                    Mapping mapping = new Mapping(clazz.getName(),method.getName());
-                    registry.put(url,mapping);
+                    String methodHttp = annotation.method();
+                    UrlMethod key = new UrlMethod(url, methodHttp);
+                    Mapping value = new Mapping(clazz.getName(),method.getName());
+                    if (registry.containsKey(key)){
+                         throw new RuntimeException("Erreur : La route [" + methodHttp.toUpperCase() + " /" + url
+                                + "] est déjà enregistrée par une autre méthode ! Conflit détecté au démarrage.");
+                    }
+                    registry.put(key,value);
                 }
             }
         }
-    return registry;
     }
- }
+}
