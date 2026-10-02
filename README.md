@@ -1,30 +1,27 @@
-# frameWork comme spring mvc
-## Sprint 0 :
-Ici l'application le framework prend le url du client et le redirige vers le controller qui va le traiter  et le retourner une le url .
-## Sprint 1 :
-Ici le framework va faire le mapping entre les url et les methodes du controller .
+# Mon Framework MVC (Inspiré de Spring MVC)
 
-## Sprint 6 : web api rest tsisy request dispatcher fa mamerina json 
-methode d'action tsy mandeha any amin'ny vu mamerina json fa tsy mamerina vue :
+## Sprint 0 : Structure de base & Front Controller
+Mise en place de la servlet centralisée `FrontControllerServlet`. Le framework intercepte toutes les requêtes entrantes pour analyser l'URL demandée par le client.
 
-- annotaiton iray amle methode
-izay tsy mandeha am vue fa mamerina json @json na @webapi
+## Sprint 1 : Scan et cartographie des routes
+Détection dynamique des classes annotées avec `@Controller` et de leurs méthodes annotées avec `@MethodAnnotation`. Les routes sont enregistrées dans un dictionnaire de mapping.
 
-- test existance annotation anle framework ,raha misy dia json no mila averina 
-block iray misy if else (mandeha manao dispatcher)
-printwriter et "application/json" body .
-dev :miretourne objet ,invoquena :coté framework :mamadika json dia aveo atao anty printwriter
+## Sprint 2 : Invocation dynamique des méthodes
+Utilisation de la réflexion Java (`java.lang.reflect`) pour instancier le contrôleur et exécuter la méthode correspondant à l'URL demandée.
 
-- dev :string valeur de retour string --> json rehefa string dia json 
-else dia lasa any amle framework to json .
-url mapping mitazona anle lien
-## link github :
-https://github.com/sessions/recovery
+## Sprint 3 : Gestion des vues avec ModelView
+Introduction de la classe `ModelView`. Le contrôleur retourne le nom de la vue et les données associées. Le framework injecte ces données dans les attributs de la requête et effectue une redirection (`forward`) vers `/WEB-INF/views/`.
 
-## Sprint 7 : formulaire () instance objet . view(formulaire) --> controller 
-- submit :
-- save 
-- verification parametre (save(emp) ohatra)
-- throws execption null (par defaut)
+## Sprint 4 : Support des ressources statiques
+Prise en charge des fichiers statiques (`.css`, `.js`, `.png`, `.jpg`, etc.) afin qu'ils soient servis directement par le serveur sans passer par le contrôleur.
 
-## Sprin 7bis :
+## Sprint 5 : Gestion des verbes HTTP (GET & POST)
+Distinction des requêtes en fonction de la méthode HTTP employée. La classe `UrlMethod` permet de différencier une route `GET` d'une route `POST` sur une même URL.
+
+## Sprint 6 : Support des API REST (@Restapi & JSON)
+Ajout de l'annotation `@Restapi`. Lorsqu'une méthode est annotée, le framework convertit le résultat en JSON via `JsonUtils` et le renvoie directement dans la réponse HTTP.
+
+## Sprint 7 : Injection dynamique des paramètres (String)
+Lecture automatique des paramètres de la requête HTTP (`request.getParameter()`) et injection dynamique dans les arguments de la méthode du contrôleur (nécessite la compilation avec l'option `-parameters`).
+## sprint 7 bis :
+- argument objet instance objet 
