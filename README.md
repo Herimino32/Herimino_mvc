@@ -27,6 +27,7 @@ https://github.com/sessions/recovery
 - verification parametre (save(emp) ohatra)
 - throws execption null (par defaut)
 
+<<<<<<< HEAD
 ## Sprin 7bis :
 
 ## Sprint 8 :
@@ -39,3 +40,17 @@ Authentifié zay vao executé :connecté :
 ex : role :prof,admin
 
 ## Sprint 10 bis : 
+=======
+## Sprint 7bis :
+- executer fonction avec des parameters obejt
+
+## Sprint 8 : Uploadfile
+- Quoi ?
+upload fichier dans un formulaire 
+- Comment ?
+    - Pojo:
+        - extension
+        - Map
+        - recto
+    - Mapping coté dev mitovy vs controller dia mitovy :
+>>>>>>> 99cc33968d1fb25038ea3251e4e6153876994376

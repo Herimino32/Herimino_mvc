@@ -5,10 +5,15 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 import com.monframework.com.annotation.Restapi;
+import com.monframework.com.utils.File;
 import com.monframework.com.utils.JsonUtils;
 import com.monframework.com.utils.Mapping;
 import com.monframework.com.utils.ModelView;
@@ -19,10 +24,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 
 public class FrontControllerServlet extends HttpServlet {
 
     private HashMap<UrlMethod, Mapping> registry;
+    private String uploadDirectory;
 
     @Override
     @SuppressWarnings("unchecked")
@@ -32,7 +39,22 @@ public class FrontControllerServlet extends HttpServlet {
             throw new ServletException(
                     "[ERREUR] Le dictionnaire 'urlRegistry' n'a pas été trouvé dans le ServletContext !");
         }
-        System.out.println("[INFO] FrontControllerServlet liée avec succès au dictionnaire de routes.");
+
+        // Chargement du fichier de configuration properties pour l'upload
+        try {
+            Properties props = new Properties();
+            var input = getServletContext().getResourceAsStream("/WEB-INF/config.properties");
+            if (input != null) {
+                props.load(input);
+                this.uploadDirectory = props.getProperty("upload.path", "/tmp/uploads/");
+            } else {
+                this.uploadDirectory = "/tmp/uploads/";
+            }
+        } catch (Exception e) {
+            this.uploadDirectory = "/tmp/uploads/";
+        }
+
+        System.out.println("[INFO] FrontControllerServlet initialisé. Dossier d'upload : " + uploadDirectory);
     }
 
     public void processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -73,7 +95,6 @@ public class FrontControllerServlet extends HttpServlet {
 
                 // 4. Extraction et injection dynamique des paramètres 
                 Class<?>[] paramTypes = targetMethod.getParameterTypes();
-                // Pour récupérer les noms des paramètres
                 Parameter[] parameters = targetMethod.getParameters(); 
                 Object[] args = new Object[paramTypes.length];
 
@@ -99,27 +120,14 @@ public class FrontControllerServlet extends HttpServlet {
                             args[i] = (paramType == int.class) ? 0 : null;
                         }
                     } 
-                    // Objet complexe binding (POJO) avec préfixe (ex: e.nom, e.age)
+                    // Gestion de la classe File (Sprint 8)
+                    else if (isFileClass(paramType)) {
+                        args[i] = extractAndSaveFile(request, paramName, paramType);
+                    }
+                    // Objets complexes et imbriqués (Sprint 7 & 7 bis)
                     else {
                         Object obj = paramType.getDeclaredConstructor().newInstance();
-
-                        for (Field field : paramType.getDeclaredFields()) {
-                            field.setAccessible(true);
-                            String requestParamKey = paramName + "." + field.getName();
-                            String fieldValue = request.getParameter(requestParamKey);
-
-                            if (fieldValue != null && !fieldValue.trim().isEmpty()) {
-                                Class<?> fieldType = field.getType();
-
-                                if (fieldType == int.class || fieldType == Integer.class) {
-                                    field.set(obj, Integer.parseInt(fieldValue));
-                                } else if (fieldType == double.class || fieldType == Double.class) {
-                                    field.set(obj, Double.parseDouble(fieldValue));
-                                } else if (fieldType == String.class) {
-                                    field.set(obj, fieldValue);
-                                }
-                            }
-                        }
+                        populateObjectRecursively(obj, paramName, request);
                         args[i] = obj;
                     }
                 }
@@ -131,7 +139,6 @@ public class FrontControllerServlet extends HttpServlet {
                 // 6. Traitement du résultat (REST JSON vs Vue JSP)
                 boolean isRestApi = targetMethod.isAnnotationPresent(Restapi.class);
 
-                // Option 1 : Réponse API REST (JSON)
                 if (isRestApi) {
                     response.setContentType("application/json;charset=UTF-8");
                     PrintWriter out = response.getWriter();
@@ -147,7 +154,6 @@ public class FrontControllerServlet extends HttpServlet {
                     out.flush();
                     return;
                 } 
-                // Option 2 : Redirection vers une Vue (JSP)
                 else if (result != null && result instanceof ModelView) {
                     response.setContentType("text/html;charset=UTF-8");
                     ModelView mv = (ModelView) result;
@@ -169,6 +175,84 @@ public class FrontControllerServlet extends HttpServlet {
         } else {
             throw new ServletException("Clé recherchée : [Methode=" + clientMethod + ", Path='" + path + "'] | "
                     + "Routes valides enregistrées : " + registry.keySet());
+        }
+    }
+
+    // --- MÉTHODES UTILITAIRES ---
+
+    private boolean isFileClass(Class<?> type) {
+        return type.getSimpleName().equalsIgnoreCase("file") || type.getName().endsWith("File");
+    }
+
+    private Object extractAndSaveFile(HttpServletRequest request, String paramName, Class<?> fileClass) {
+        try {
+            Part filePart = request.getPart(paramName);
+            if (filePart != null && filePart.getSize() > 0) {
+                Object fileObj = fileClass.getDeclaredConstructor().newInstance();
+                byte[] fileBytes = filePart.getInputStream().readAllBytes();
+                String contentType = filePart.getContentType();
+                String fileName = filePart.getSubmittedFileName();
+
+                // Sauvegarde physique sur le disque
+                java.io.File uploadDir = new java.io.File(this.uploadDirectory);
+                if (!uploadDir.exists()) {
+                    uploadDir.mkdirs();
+                }
+                Path destinationPath = Paths.get(uploadDir.getAbsolutePath(), fileName);
+                Files.write(destinationPath, fileBytes);
+
+                // Remplissage des attributs de la classe File
+                for (Field field : fileClass.getDeclaredFields()) {
+                    field.setAccessible(true);
+                    String fname = field.getName();
+                    if (fname.equals("data")) {
+                        field.set(fileObj, fileBytes);
+                    } else if (fname.equals("format") || fname.equals("contentType")) {
+                        field.set(fileObj, contentType);
+                    } else if (fname.equals("name") || fname.equals("filename")) {
+                        field.set(fileObj, fileName);
+                    }
+                }
+                return fileObj;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de l'extraction du fichier : " + paramName, e);
+        }
+        return null;
+    }
+
+    private void populateObjectRecursively(Object obj, String prefix, HttpServletRequest request) throws Exception {
+        for (Field field : obj.getClass().getDeclaredFields()) {
+            field.setAccessible(true);
+            Class<?> fieldType = field.getType();
+            String fullKey = prefix + "." + field.getName();
+
+            if (fieldType == String.class) {
+                String val = request.getParameter(fullKey);
+                if (val != null) {
+                    field.set(obj, val);
+                }
+            } else if (fieldType == int.class || fieldType == Integer.class) {
+                String val = request.getParameter(fullKey);
+                if (val != null && !val.trim().isEmpty()) {
+                    field.set(obj, Integer.parseInt(val));
+                }
+            } else if (fieldType == double.class || fieldType == Double.class) {
+                String val = request.getParameter(fullKey);
+                if (val != null && !val.trim().isEmpty()) {
+                    field.set(obj, Double.parseDouble(val));
+                }
+            } else if (isFileClass(fieldType)) {
+                Object fileObj = extractAndSaveFile(request, fullKey, fieldType);
+                if (fileObj != null) {
+                    field.set(obj, fileObj);
+                }
+            } else {
+                // Objet imbriqué (ex: Adresse)
+                Object nestedObj = fieldType.getDeclaredConstructor().newInstance();
+                populateObjectRecursively(nestedObj, fullKey, request);
+                field.set(obj, nestedObj);
+            }
         }
     }
 
