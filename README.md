@@ -28,3 +28,14 @@ https://github.com/sessions/recovery
 - throws execption null (par defaut)
 
 ## Sprin 7bis :
+
+## Sprint 8 :
+
+## Sprint 9 : Session
+
+## Sprint 10 tsotra :
+Authentifié zay vao executé :connecté :
+- role prof specifique 
+ex : role :prof,admin
+
+## Sprint 10 bis : 
