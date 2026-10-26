@@ -24,6 +24,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 
 public class FrontControllerServlet extends HttpServlet {
@@ -124,6 +125,11 @@ public class FrontControllerServlet extends HttpServlet {
                     else if (isFileClass(paramType)) {
                         args[i] = extractAndSaveFile(request, paramName, paramType);
                     }
+                    // 🔑 Gestion de la classe Session (MySession)
+                    else if (isSessionClass(paramType)) {
+                        args[i] = paramType.getDeclaredConstructor(HttpSession.class)
+                                           .newInstance(request.getSession());
+                    }
                     // Objets complexes et imbriqués (Sprint 7 & 7 bis)
                     else {
                         Object obj = paramType.getDeclaredConstructor().newInstance();
@@ -182,6 +188,11 @@ public class FrontControllerServlet extends HttpServlet {
 
     private boolean isFileClass(Class<?> type) {
         return type.getSimpleName().equalsIgnoreCase("file") || type.getName().endsWith("File");
+    }
+
+    // 🔑 Méthode utilitaire pour détecter le type MySession
+    private boolean isSessionClass(Class<?> type) {
+        return type.getSimpleName().equalsIgnoreCase("MySession") || type.getName().endsWith("MySession");
     }
 
     private Object extractAndSaveFile(HttpServletRequest request, String paramName, Class<?> fileClass) {
