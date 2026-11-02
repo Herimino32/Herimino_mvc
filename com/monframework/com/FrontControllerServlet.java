@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import com.monframework.com.annotation.Auth;
 import com.monframework.com.annotation.Restapi;
 import com.monframework.com.utils.File;
 import com.monframework.com.utils.JsonUtils;
@@ -31,6 +32,7 @@ public class FrontControllerServlet extends HttpServlet {
 
     private HashMap<UrlMethod, Mapping> registry;
     private String uploadDirectory;
+    
 
     @Override
     @SuppressWarnings("unchecked")
@@ -92,6 +94,40 @@ public class FrontControllerServlet extends HttpServlet {
                 if (targetMethod == null) {
                     throw new NoSuchMethodException(
                             "Méthode " + mapping.getMethod() + " introuvable dans " + mapping.getClassName());
+                }
+
+                // Vérification de l'authentification (@Auth)
+                boolean isAuth = targetMethod.isAnnotationPresent(Auth.class) || clazz.isAnnotationPresent(Auth.class);
+                if (isAuth) {
+                    // Récupération de la clé globale configurée dans le web.xml (ou via AppLoadListener)
+                    String userKey = (String) getServletContext().getAttribute("user_key");
+                    if (userKey == null) {
+                        userKey = getServletContext().getInitParameter("user_key");
+                    }
+                    if (userKey == null) {
+                        userKey = "user"; 
+                    }
+
+                    // Vérification de la session
+                    MySession session = new MySession(request.getSession());
+                    Object user = session.get(userKey);
+
+                    if (user == null) {
+                        if (targetMethod.isAnnotationPresent(Restapi.class)) {
+                            // API REST : 401 en JSON
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().print("{\"error\":\"Accès refusé : utilisateur non authentifié\"}");
+                        } else {
+                            // Page : redirection vers la page de login
+                            String loginUrl = getServletContext().getInitParameter("login_url");
+                            if (loginUrl == null || loginUrl.trim().isEmpty()) {
+                                loginUrl = "/login";
+                            }
+                            response.sendRedirect(request.getContextPath() + loginUrl + "?denied=1");
+                        }
+                        return;
+                    }
                 }
 
                 // 4. Extraction et injection dynamique des paramètres 
@@ -161,8 +197,15 @@ public class FrontControllerServlet extends HttpServlet {
                     return;
                 } 
                 else if (result != null && result instanceof ModelView) {
-                    response.setContentType("text/html;charset=UTF-8");
                     ModelView mv = (ModelView) result;
+
+                    // Redirection : doit être testée AVANT de construire viewPath
+                    if (isRedirect(mv.getView())) {
+                        doRedirect(request, response, mv.getView());
+                        return;
+                    }
+
+                    response.setContentType("text/html;charset=UTF-8");
                     String viewPath = "/WEB-INF/views/" + mv.getView() + ".jsp";
 
                     HashMap<String, Object> modelData = mv.getData();
@@ -172,6 +215,10 @@ public class FrontControllerServlet extends HttpServlet {
 
                     RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath);
                     dispatcher.forward(request, response);
+                    return;
+                }
+                else if (result instanceof String && isRedirect((String) result)) {
+                    doRedirect(request, response, (String) result);
                     return;
                 }
 
@@ -184,7 +231,22 @@ public class FrontControllerServlet extends HttpServlet {
         }
     }
 
+
+
     // --- MÉTHODES UTILITAIRES ---
+
+    private boolean isRedirect(String view) {
+        return view != null && view.startsWith("redirect:");
+    }
+
+    private void doRedirect(HttpServletRequest request, HttpServletResponse response, String view)
+            throws IOException {
+        String target = view.substring("redirect:".length()).trim();
+        if (!target.startsWith("/")) {
+            target = "/" + target;
+        }
+        response.sendRedirect(request.getContextPath() + target);
+    }
 
     private boolean isFileClass(Class<?> type) {
         return type.getSimpleName().equalsIgnoreCase("file") || type.getName().endsWith("File");
